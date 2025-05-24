@@ -10,14 +10,14 @@ import './index.css'
 //   </StrictMode>,
 // )
 
-import { AmbientLight, AxesHelper, BoxGeometry, BufferAttribute, BufferGeometry, Color, DirectionalLight, DoubleSide, GridHelper, Mesh, MeshBasicMaterial, Object3D, OrthographicCamera, Points, PointsMaterial, Scene, Vector3, WebGLRenderer } from 'three'
+import { AmbientLight, AxesHelper, BoxGeometry, BufferAttribute, BufferGeometry, Color, DirectionalLight, DoubleSide, GridHelper, Group, Mesh, MeshBasicMaterial, Object3D, OrthographicCamera, PerspectiveCamera, Points, PointsMaterial, Scene, Vector3, WebGLRenderer } from 'three'
 import { LineSegmentsGeometry } from 'three/examples/jsm/lines/LineSegmentsGeometry.js';
 import { LineSegments2 } from 'three/examples/jsm/lines/LineSegments2.js';
 import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
-import { color } from 'three/tsl';
+// import { TrackballControls } from './trackballControl';
 class Canvas {
   public scene:Scene
-  camera: OrthographicCamera;
+  camera: OrthographicCamera | PerspectiveCamera;
   renderer: WebGLRenderer;
   controls: TrackballControls;
   
@@ -40,6 +40,20 @@ class Canvas {
         );
         camera.position.set(0, -15, 3); // 设置相机位置
         camera.lookAt(0, 0, 0);       // 指向场景中心
+
+
+        // const camera = new PerspectiveCamera(
+        //   75,
+        //   window.innerWidth / window.innerHeight,
+        //   0.1,
+        //   1000
+        // )
+        // // camera.up.set(0,0,1)
+        // camera.position.set(0, -15, 3);
+        // camera.lookAt(0, 0, 0);
+
+        // console.log(camera.up);
+        
         this.camera = camera
 
 
@@ -131,11 +145,16 @@ class Canvas {
         const line1 = new LineSegments2(buff, lineMat);
 
 
+        const group = new Group()
+
         const obj = new Object3D()
+        obj.matrixAutoUpdate = false
         obj.add(line1)
-        line1.position.set(-center.x,-center.y,-center.z)
-        obj.position.set(center.x,center.y,center.z)
+        // line1.position.set(-center.x,-center.y,-center.z)
+        // obj.position.set(center.x,center.y,center.z)
         // obj.scale.set(0.5,0.5,0.5)
+
+        group.add(obj)
 
         this.scene.add(obj)
         // 线旁边画个spritess
@@ -149,13 +168,14 @@ class Canvas {
           const point = new Points(geometry, new PointsMaterial({
             color: 0xff0000,
             size: 5,
+            sizeAttenuation:false
         }))
         this.scene.add(point)
 
 
         this.controls.addEventListener('change',()=>{
-            // console.log('相机缩放值为');
-            // console.log(this.camera.zoom);
+            console.log('相机缩放值为');
+            console.log(this.camera.zoom);
             const zoom = this.camera.zoom
             obj.scale.set(1/zoom,1/zoom,1/zoom)
 
@@ -174,10 +194,17 @@ class Canvas {
             const w: number = window.innerWidth;
             const h: number = window.innerHeight;
             const aspectNew: number = w / h;
-            this.camera.left = (frustumSize * aspectNew) / -2;
-            this.camera.right = (frustumSize * aspectNew) / 2;
-            this.camera.top = frustumSize / 2;
-            this.camera.bottom = frustumSize / -2;
+           
+            if(this.camera instanceof PerspectiveCamera) {
+               this.camera.aspect = aspectNew;
+            }else {
+              this.camera.left = (frustumSize * aspectNew) / -2;
+              this.camera.right = (frustumSize * aspectNew) / 2;
+              this.camera.top = frustumSize / 2;
+              this.camera.bottom = frustumSize / -2;
+              // this.camera.updateProjectionMatrix();
+            }
+           
             this.camera.updateProjectionMatrix();
 
             this.renderer.setSize(w, h);

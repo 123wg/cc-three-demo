@@ -529,6 +529,8 @@ class TrackballControls extends Controls {
                     this._eye.multiplyScalar( factor );
 
                 } else if ( this.object.isOrthographicCamera ) {
+                    console.log('相机缩放====');
+                    
 
                     this.object.zoom = MathUtils.clamp( this.object.zoom / factor, this.minZoom, this.maxZoom );
 
