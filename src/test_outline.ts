@@ -7,8 +7,11 @@ import { LineSegmentsGeometry } from 'three/examples/jsm/lines/LineSegmentsGeome
 import { LineSegments2 } from 'three/examples/jsm/lines/LineSegments2.js';
 import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
 import { box_edge, box_face, circle_edge, circle_face, cylinder_edge, cylinder_face, surface_edge, surface_face } from './outline_data';
-
-
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
+import {OutlinePass} from './outlinepass'
+import { Vector2 } from 'three';
+import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 
 class Canvas {
   public scene:Scene
@@ -16,6 +19,9 @@ class Canvas {
   renderer: WebGLRenderer;
   controls: TrackballControls;
   directionalLight:DirectionalLight
+  composer: EffectComposer;
+  faces:Mesh[] = []
+  edges:LineSegments2[] = []
   
     constructor(){
         const scene = new Scene();
@@ -51,7 +57,7 @@ class Canvas {
         document.body.appendChild(renderer.domElement);
         this.renderer = renderer
          // 可选：设置清空颜色（背景）
-        this.renderer.setClearColor(0xffffff);
+        this.renderer.setClearColor(0x000000);
 
         this.controls = new TrackballControls(this.camera, this.renderer.domElement);
         this.controls.rotateSpeed = 5.0;
@@ -83,18 +89,39 @@ class Canvas {
             this.directionalLight.position.copy(this.camera.position)
         })
 
-
-        this.animate();
-
         this.onResize();
 
         this.addObject()
+
+        this.initComposer();
+
+        this.animate();
+    }
+
+    initComposer(){
+        const composer = new EffectComposer(this.renderer);
+        composer.addPass(new RenderPass(this.scene,this.camera))
+        const resolution = new Vector2(window.innerWidth * window.devicePixelRatio, window.innerHeight * window.devicePixelRatio)
+        const outlinePass = new OutlinePass(resolution,this.scene,this.camera)
+        outlinePass.visibleEdgeColor = new Color(0x0617fe)
+        outlinePass.hiddenEdgeColor = new Color(0xe60f0f)
+        outlinePass.edgeStrength = 10
+        outlinePass.edgeGlow = 0
+        outlinePass.edgeThickness = 1
+        outlinePass.pulsePeriod = 0
+        console.log(this.faces);
+        
+        outlinePass.selectedObjects = this.faces
+        composer.addPass(outlinePass)
+        composer.addPass(new OutputPass());
+        this.composer = composer
     }
 
     private animate = ()=> {
           requestAnimationFrame(this.animate);
           this.controls.update()
-          this.renderer.render(this.scene, this.camera);
+        //   this.renderer.render(this.scene, this.camera);
+         this.composer.render()
     }
 
     onResize(){
@@ -123,7 +150,8 @@ class Canvas {
 
 
     // 加一些测试物体到场景中
-    addObject() { 
+    addObject() {
+        
         const meshMat = new MeshPhongMaterial({
             color:new Color(0.6653872982754769,0.6653872982754769,0.6653872982754769),
             side: DoubleSide,
@@ -152,6 +180,7 @@ class Canvas {
             buff.setIndex(faceFata.indices);
             buff.computeBoundingBox();
             const face = new Mesh(buff, meshMat);
+            this.faces.push(face)
             this.scene.add(face)
         })
 
@@ -164,8 +193,11 @@ class Canvas {
 
             const edge = new LineSegments2(buff, edgeMaterial);
             edge.renderOrder = 999
+
+            this.edges.push(edge)
             this.scene.add(edge);
         })
+
     }
 }
 
