@@ -1,6 +1,7 @@
 import { Camera } from 'three';
 import { Object3D } from 'three';
 import { OrthographicCamera } from 'three';
+import { WebGLRenderer } from 'three';
 import { PerspectiveCamera } from 'three';
 import {
     AdditiveBlending,
@@ -36,7 +37,7 @@ import { CopyShader } from 'three/examples/jsm/shaders/CopyShader.js';
  * @three_import import { OutlinePass } from 'three/addons/postprocessing/OutlinePass.js';
  */
 class OutlinePass extends Pass {
-    renderScene: Scene;
+    renderScene: Scene;  // 渲染的场景
     renderCamera: PerspectiveCamera | OrthographicCamera;
     selectedObjects: Object3D[];
     visibleEdgeColor: Color;
@@ -349,36 +350,43 @@ class OutlinePass extends Pass {
      * @param {number} deltaTime - The delta time in seconds.
      * @param {boolean} maskActive - Whether masking is active or not.
      */
-    render( renderer, writeBuffer, readBuffer, deltaTime, maskActive ) {
+    render( renderer:WebGLRenderer, writeBuffer:WebGLRenderTarget, readBuffer:WebGLRenderTarget, deltaTime:number, maskActive:boolean ) {
 
         if ( this.selectedObjects.length > 0 ) {
-
+            // 保存清屏颜色
             renderer.getClearColor( this._oldClearColor );
+            // 保存清除透明度值
             this.oldClearAlpha = renderer.getClearAlpha();
+            // 保存是否自动清屏
             const oldAutoClear = renderer.autoClear;
-
+            // 设置不自动清除
             renderer.autoClear = false;
 
             if ( maskActive ) renderer.state.buffers.stencil.setTest( false );
 
+            // 设置清除颜色
             renderer.setClearColor( 0xffffff, 1 );
 
+            // 遍历所有选中对象，将Mesh添加到this._selectionCache中
             this._updateSelectionCache();
 
-            // Make selected objects invisible
+            // 将选中的物体设置为false,暂时不清楚作用
             this._changeVisibilityOfSelectedObjects( false );
 
+            // 保存当前场景的背景
             const currentBackground = this.renderScene.background;
+            // 保存当前场景的覆盖材质
             const currentOverrideMaterial = this.renderScene.overrideMaterial;
+            // 将当前场景的背景设置为null
             this.renderScene.background = null;
 
-            // 1. Draw Non Selected objects in the depth buffer
+            // 将所有未选中物体渲染到一个深度图上
             this.renderScene.overrideMaterial = this.depthMaterial;
             renderer.setRenderTarget( this.renderTargetDepthBuffer );
             renderer.clear();
             renderer.render( this.renderScene, this.renderCamera );
 
-            // Make selected objects visible
+            // 显示所有选中的物体
             this._changeVisibilityOfSelectedObjects( true );
             this._visibilityCache.clear();
 
@@ -386,6 +394,7 @@ class OutlinePass extends Pass {
             this._updateTextureMatrix();
 
             // Make non selected objects invisible, and draw only the selected objects, by comparing the depth buffer of non selected objects
+            // 将未选中物体隐藏，绘制选中物体，和未选中物体比较深度?? 不太理解是用来干啥的
             this._changeVisibilityOfNonSelectedObjects( false );
             this.renderScene.overrideMaterial = this.prepareMaskMaterial;
             this.prepareMaskMaterial.uniforms[ 'cameraNearFar' ].value.set( this.renderCamera.near, this.renderCamera.far );
@@ -394,6 +403,7 @@ class OutlinePass extends Pass {
             renderer.setRenderTarget( this.renderTargetMaskBuffer );
             renderer.clear();
             renderer.render( this.renderScene, this.renderCamera );
+            // 将未选中物体显示
             this._changeVisibilityOfNonSelectedObjects( true );
             this._visibilityCache.clear();
             this._selectionCache.clear();
