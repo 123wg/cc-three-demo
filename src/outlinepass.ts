@@ -55,7 +55,8 @@ class OutlinePass extends Pass {
     renderTargetMaskBuffer: WebGLRenderTarget;
     depthMaterial: MeshDepthMaterial;
     prepareMaskMaterial: ShaderMaterial;
-    renderTargetDepthBuffer: WebGLRenderTarget;
+    // 将未选中物体的深度存在这里
+    renderTargetDepthBuffer: WebGLRenderTarget; 
     renderTargetMaskDownSampleBuffer: WebGLRenderTarget;
     renderTargetBlurBuffer1: WebGLRenderTarget;
     renderTargetBlurBuffer2: WebGLRenderTarget;
@@ -592,13 +593,13 @@ class OutlinePass extends Pass {
     }
 
     _updateTextureMatrix() {
-
+        // NDC坐标转到0-1 表示纹理
         this.textureMatrix.set( 0.5, 0.0, 0.0, 0.5,
             0.0, 0.5, 0.0, 0.5,
             0.0, 0.0, 0.5, 0.5,
             0.0, 0.0, 0.0, 1.0 );
-        this.textureMatrix.multiply( this.renderCamera.projectionMatrix );
-        this.textureMatrix.multiply( this.renderCamera.matrixWorldInverse );
+        this.textureMatrix.multiply( this.renderCamera.projectionMatrix ); // 相机坐标转NDC坐标
+        this.textureMatrix.multiply( this.renderCamera.matrixWorldInverse ); // 世界转相机坐标系
 
     }
 
