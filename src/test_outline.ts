@@ -56,8 +56,6 @@ class Canvas {
             // logarithmicDepthBuffer:true
         });
 
-        // renderer.outputEncoding = THREE.sRGBEncoding; 
-        // renderer.outputColorSpace = 
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.setPixelRatio(window.devicePixelRatio);
         document.body.appendChild(renderer.domElement);
@@ -77,7 +75,7 @@ class Canvas {
         this.scene.add(ambientLight);
 
         
-        const directionalLight = new DirectionalLight(0xffffff, 0.8);
+        const directionalLight = new DirectionalLight(0xffffff, 1);
         directionalLight.position.copy(this.camera.position)
         this.directionalLight = directionalLight
         this.scene.add(directionalLight);
@@ -106,7 +104,6 @@ class Canvas {
 
     initComposer(){
         const composer = new EffectComposer(this.renderer);
-        // composer.addPass(new RenderPass(this.scene,this.camera))
         const resolution = new Vector2(window.innerWidth * window.devicePixelRatio, window.innerHeight * window.devicePixelRatio)
         const ccPass = new CCPass({
             scene: this.scene,
@@ -114,27 +111,18 @@ class Canvas {
             resolution,
             mode:renderState.renderMode
         });
-        // const outlinePass = new OutlinePass(resolution,this.scene,this.camera)
-        // outlinePass.visibleEdgeColor = new Color(0x0617fe)
-        // outlinePass.hiddenEdgeColor = new Color(0xe60f0f)
-        // outlinePass.edgeStrength = 10
-        // outlinePass.edgeGlow = 0
-        // outlinePass.edgeThickness = 1
-        // outlinePass.pulsePeriod = 0
-        // console.log(this.faces);
-        
-        // outlinePass.selectedObjects = this.faces
-        // composer.addPass(outlinePass)
         composer.addPass(ccPass)
-        // composer.addPass(new OutputPass());
         this.composer = composer
     }
 
     private animate = ()=> {
         requestAnimationFrame(this.animate);
         this.controls.update()
-        // this.renderer.render(this.scene, this.camera);
-         this.composer.render()
+        if(this.composer) {
+            this.composer.render()
+        }else {
+            this.renderer.render(this.scene, this.camera);
+        }
     }
 
     onResize(){

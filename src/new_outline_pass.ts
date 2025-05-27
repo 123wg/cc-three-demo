@@ -2,7 +2,7 @@
 * 自定义CCPass
 */
 
-import { Color, IUniform, LinearFilter, Material, NoBlending, OrthographicCamera, PerspectiveCamera, RGBAFormat, Scene, ShaderMaterial, SRGBColorSpace, SRGBToLinear, Texture, Uniform, UniformsUtils, Vector2, WebGLRenderer, WebGLRenderTarget } from "three";
+import { Color, IUniform, LinearFilter, Material, MeshBasicMaterial, NoBlending, OrthographicCamera, PerspectiveCamera, RGBAFormat, Scene, ShaderMaterial, SRGBColorSpace, SRGBToLinear, Texture, Uniform, UniformsUtils, Vector2, WebGLRenderer, WebGLRenderTarget } from "three";
 import { FullScreenQuad, Pass } from "three/examples/jsm/postprocessing/Pass.js";
 import { EN_RENDER_MODE } from "./renderState";
 import { CopyShader } from "three/examples/jsm/shaders/CopyShader.js";
@@ -32,6 +32,7 @@ export class CCPass extends Pass {
     private _transparent = false;
 
     // 渲染用
+    private _tmpClearColor = 0xffffff
     private _outputRT:WebGLRenderTarget;
     private _fsQuad:FullScreenQuad;
     private _copyMaterial:ShaderMaterial;
@@ -39,16 +40,23 @@ export class CCPass extends Pass {
         tDiffuse:IUniform<Texture>;
         opacity:IUniform;
     }
+    private _whiteMeshMat:MeshBasicMaterial
     
     constructor(params:CCPassParams){
         super();
         this._scene = params.scene;
         this._camera = params.camera;
         this._resolution = params.resolution;
+        this.setRenderMode(params.mode)
 
         this._fsQuad = new FullScreenQuad();
-        this._initOutputRT();
+        this._initMeshMat()
         this._initCopyMaterial();
+        this._initOutputRT();
+    }
+
+    private _initMeshMat(){
+        this._whiteMeshMat = new MeshBasicMaterial({color:this._tmpClearColor})
     }
 
 
@@ -58,13 +66,20 @@ export class CCPass extends Pass {
     private _initCopyMaterial(){
         const copyShader = CopyShader
         this._copyUniforms = UniformsUtils.clone(copyShader.uniforms)
+        this._copyUniforms.opacity.value = 1.0
         this._copyMaterial = new ShaderMaterial({
-            defines:{
-                SRGB_TRANSFER:''
-            },
             uniforms: this._copyUniforms,
             vertexShader: copyShader.vertexShader,
-            fragmentShader: copyShader.fragmentShader,
+            fragmentShader: /* glsl */`
+                uniform float opacity;
+                uniform sampler2D tDiffuse;
+                varying vec2 vUv;
+
+                void main() {
+                    vec4 texel = texture2D( tDiffuse, vUv );
+                    gl_FragColor = opacity * texel;
+                    gl_FragColor = sRGBTransferOETF( gl_FragColor );
+                }`,
             blending: NoBlending,
             depthTest: false,
             depthWrite: false,
@@ -91,7 +106,7 @@ export class CCPass extends Pass {
         this._oldAutoClear = renderer.autoClear;
 
         renderer.autoClear = false;
-        renderer.setClearColor(0xffffff,1);
+        renderer.setClearColor(this._tmpClearColor,1);
         renderer.clear();
     }
 
@@ -100,7 +115,9 @@ export class CCPass extends Pass {
     * 渲染面
     */
     private _renderMesh(renderer: WebGLRenderer) {
-        this._renderSceneToRT(renderer,this._outputRT,null)
+        const meshMat = this._colored ? null : this._whiteMeshMat;
+        // 将面换成这个材质 然后一起渲染?
+        this._renderSceneToRT(renderer,this._outputRT,meshMat);
     }
 
 
