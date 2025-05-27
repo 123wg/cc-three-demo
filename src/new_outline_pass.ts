@@ -2,11 +2,11 @@
 * 自定义CCPass
 */
 
-import { Color, IUniform, LinearFilter, Material, MeshBasicMaterial, NoBlending, OrthographicCamera, PerspectiveCamera, RGBAFormat, Scene, ShaderMaterial, SRGBColorSpace, SRGBToLinear, Texture, Uniform, UniformsUtils, Vector2, WebGLRenderer, WebGLRenderTarget } from "three";
+import { AxesHelper, Camera, Color, IUniform, Light, LinearFilter, Material, Mesh, MeshBasicMaterial, NoBlending, Object3D, OrthographicCamera, PerspectiveCamera, RGBAFormat, Scene, ShaderMaterial, SRGBColorSpace, SRGBToLinear, Texture, Uniform, UniformsUtils, Vector2, WebGLRenderer, WebGLRenderTarget } from "three";
 import { FullScreenQuad, Pass } from "three/examples/jsm/postprocessing/Pass.js";
 import { EN_RENDER_MODE } from "./renderState";
 import { CopyShader } from "three/examples/jsm/shaders/CopyShader.js";
-import { sRGBTransferEOTF } from "three/tsl";
+import { LineSegments2 } from "three/examples/jsm/lines/LineSegments2.js";
 
 export type CCPassParams = {
     scene:Scene, 
@@ -15,23 +15,40 @@ export type CCPassParams = {
     mode:EN_RENDER_MODE
 }
 
+export type Scenelassification = {
+    /**渲染目标面*/
+    topoMeshList:Array<Mesh>
+    /**渲染目标线*/
+    topoEdgeList:Array<LineSegments2>
+    /**other渲染对象*/
+    otherTopoList:Array<Object3D>
+    /**other灯光、相机等*/
+    otherHelperList:Array<Object3D>
+}
+
 export class CCPass extends Pass {
-    // 基础参数
+    /**-------------------基础渲染参数-------------------------*/
     private _scene:Scene;
     private _camera:PerspectiveCamera | OrthographicCamera;
     private _resolution:Vector2;
 
-    // 缓存旧参数
+    /**-------------------缓存旧参数---------------------------*/
     private _oldAutoClear = true;
     private _oldClearColor:Color = new Color();
     private _oldClearAlpha:number = 0;
     
-    // 对应渲染模式的内部参数
+    /**-------------------渲染模式对应内部数据-----------------*/
     private _colored = true;
     private _edge = true;
     private _transparent = false;
 
-    // 渲染用
+    /**-------------------渲染用参数--------------------------*/
+    private _sceneClassification:Scenelassification = {
+        topoMeshList: [],
+        topoEdgeList: [],
+        otherTopoList: [],
+        otherHelperList: []
+    }
     private _tmpClearColor = 0xffffff
     private _outputRT:WebGLRenderTarget;
     private _fsQuad:FullScreenQuad;
@@ -40,7 +57,8 @@ export class CCPass extends Pass {
         tDiffuse:IUniform<Texture>;
         opacity:IUniform;
     }
-    private _whiteMeshMat:MeshBasicMaterial
+    private _whiteMeshMat:MeshBasicMaterial;
+    private _visibleCache:Map<Object3D,boolean> = new Map();
     
     constructor(params:CCPassParams){
         super();
@@ -97,10 +115,30 @@ export class CCPass extends Pass {
         });
     }
 
+
+    /**
+    * 对场景分类,方便后续渲染从中取各种对象集合
+    */
+   private _sceneClassify(){
+        const {topoMeshList, topoEdgeList, otherTopoList, otherHelperList} = this._sceneClassification;
+        const sceneChild = this._scene.children;
+        for(const obj of sceneChild){
+            if(obj instanceof Mesh && !(obj instanceof LineSegments2)) {
+                topoMeshList.push(obj)
+            }
+            if(obj instanceof LineSegments2){
+                topoEdgeList.push(obj)
+            }
+            if(obj instanceof AxesHelper){
+                otherHelperList.push(obj)
+            }
+        }
+   }
+
     /**
     * 缓存旧的设置
     */
-    private _cacheOldSetting(renderer:WebGLRenderer){
+    private _cacheOldRendererSetting(renderer:WebGLRenderer){
         renderer.getClearColor(this._oldClearColor);
         this._oldClearAlpha = renderer.getClearAlpha();
         this._oldAutoClear = renderer.autoClear;
@@ -115,9 +153,11 @@ export class CCPass extends Pass {
     * 渲染面
     */
     private _renderMesh(renderer: WebGLRenderer) {
-        const meshMat = this._colored ? null : this._whiteMeshMat;
-        // 将面换成这个材质 然后一起渲染?
-        this._renderSceneToRT(renderer,this._outputRT,meshMat);
+        // const meshMat = this._colored ? null : this._whiteMeshMat;
+        // 需要着色 将Mesh外的其它物体visible设置为false,返回, 否则,将visible直接设置为false
+        this._changeBeforeRenderMesh()
+        this._renderSceneToRT(renderer,this._outputRT,null);
+        this._recoverVisibleCache()
     }
 
 
@@ -132,7 +172,7 @@ export class CCPass extends Pass {
     /**
     * 恢复旧的设置
     */
-    private _recoverOldSetting(renderer:WebGLRenderer){ 
+    private _recoverOldRendererSetting(renderer:WebGLRenderer){ 
         renderer.setClearColor(this._oldClearColor, this._oldClearAlpha);
         renderer.autoClear = this._oldAutoClear;
     }
@@ -150,10 +190,11 @@ export class CCPass extends Pass {
 
 
     public render(renderer: WebGLRenderer, writeBuffer: WebGLRenderTarget, readBuffer: WebGLRenderTarget, deltaTime: number, maskActive: boolean): void {
-        this._cacheOldSetting(renderer)
+        this._sceneClassify()
+        this._cacheOldRendererSetting(renderer)
         this._renderMesh(renderer)
         this._renderEdge(renderer)
-        this._recoverOldSetting(renderer)
+        this._recoverOldRendererSetting(renderer)
         this._renderToScreen(renderer)
     }
 
@@ -181,11 +222,52 @@ export class CCPass extends Pass {
         this._fsQuad.render(renderer)
     }
 
+
+    /**
+    * 渲染Mesh前处理
+    */
+    private _changeBeforeRenderMesh() {
+        const {topoMeshList, topoEdgeList,otherHelperList} = this._sceneClassification
+        if(this._colored) {
+            topoEdgeList.forEach(_=>{
+                this._visibleCache.set(_, _.visible)
+                _.visible = false;
+            })
+            otherHelperList.forEach(_=>{
+                this._visibleCache.set(_, _.visible)
+                _.visible = false;
+            })
+        }else {
+            topoMeshList.forEach(_=>{
+                this._visibleCache.set(_,_.visible)
+                _.visible = false
+            })
+        }
+        // 将mesh外的物体隐藏 返回
+        // 否则 将mesh的材质替换
+    }
+
+    /**
+    * visible缓存回写并清空
+    */
+    private _recoverVisibleCache(){
+        this._visibleCache.forEach((visible, obj)=>{
+            obj.visible = visible
+        })
+        this._visibleCache.clear();
+    }
+
     /**
     * 设置是否显示
     */
-    private _setTransparent(value:boolean){
-
+    private _setTransparent(transparent:boolean){
+        // TODO 测试后删除
+        this._sceneClassify()
+        this._sceneClassification.topoMeshList.forEach(_=>{
+            const mat =  (_.material as Material)
+            mat.transparent = transparent;
+            mat.opacity = transparent ? 0.5 : 1;
+        })
     }
 
     /**
