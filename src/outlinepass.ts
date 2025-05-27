@@ -395,12 +395,13 @@ class OutlinePass extends Pass {
             this._updateTextureMatrix();
 
             // Make non selected objects invisible, and draw only the selected objects, by comparing the depth buffer of non selected objects
-            // 将未选中物体隐藏，绘制选中物体，和未选中物体比较深度?? 不太理解是用来干啥的
+            // 将未选中物体隐藏，绘制选中物体，和未选中物体比较深度?? 为了绘制遮罩层, 被遮挡g通道为0,不被遮挡,g通道为1
             this._changeVisibilityOfNonSelectedObjects( false );
             this.renderScene.overrideMaterial = this.prepareMaskMaterial;
             this.prepareMaskMaterial.uniforms[ 'cameraNearFar' ].value.set( this.renderCamera.near, this.renderCamera.far );
             this.prepareMaskMaterial.uniforms[ 'depthTexture' ].value = this.renderTargetDepthBuffer.texture;
             this.prepareMaskMaterial.uniforms[ 'textureMatrix' ].value = this.textureMatrix;
+            // 渲染到遮罩层
             renderer.setRenderTarget( this.renderTargetMaskBuffer );
             renderer.clear();
             renderer.render( this.renderScene, this.renderCamera );
@@ -413,12 +414,15 @@ class OutlinePass extends Pass {
             this.renderScene.overrideMaterial = currentOverrideMaterial;
 
             // 2. Downsample to Half resolution
+            // 将遮罩层降采样渲染到renderTargetMaskDownSampleBuffer中
+            // 传统渲染需要遍历场景中的所有物体，而这里只需要操作纹理（像素级处理）
             this._fsQuad.material = this.materialCopy;
             this.copyUniforms[ 'tDiffuse' ].value = this.renderTargetMaskBuffer.texture;
             renderer.setRenderTarget( this.renderTargetMaskDownSampleBuffer );
             renderer.clear();
             this._fsQuad.render( renderer );
 
+            // 轮廓线实现脉冲发光效果,真实实现中这部分是不需要的
             this.tempPulseColor1.copy( this.visibleEdgeColor );
             this.tempPulseColor2.copy( this.hiddenEdgeColor );
 
@@ -431,11 +435,14 @@ class OutlinePass extends Pass {
             }
 
             // 3. Apply Edge Detection Pass
+            // 猜测最后的模糊可能和这个地方使用降采样有关 先使用高精度的试一下，效果不大，再想其它办法
             this._fsQuad.material = this.edgeDetectionMaterial;
             this.edgeDetectionMaterial.uniforms[ 'maskTexture' ].value = this.renderTargetMaskDownSampleBuffer.texture;
             this.edgeDetectionMaterial.uniforms[ 'texSize' ].value.set( this.renderTargetMaskDownSampleBuffer.width, this.renderTargetMaskDownSampleBuffer.height );
+            // 这个地方的颜色 不需要抖动效果 真实使用的时候可以去掉写死
             this.edgeDetectionMaterial.uniforms[ 'visibleEdgeColor' ].value = this.tempPulseColor1;
             this.edgeDetectionMaterial.uniforms[ 'hiddenEdgeColor' ].value = this.tempPulseColor2;
+            // 这里的renderTargetEdgeBuffer1也使用低分辨率来处理了,也会导致模糊? 不清楚 需要调试观察
             renderer.setRenderTarget( this.renderTargetEdgeBuffer1 );
             renderer.clear();
             this._fsQuad.render( renderer );

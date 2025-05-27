@@ -11,7 +11,10 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import {OutlinePass} from './outlinepass'
 import { Vector2 } from 'three';
-import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
+// import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
+import { OutputPass } from './outpass';
+import { CCPass } from './new_outline_pass';
+import { renderState } from './renderState';
 
 class Canvas {
   public scene:Scene
@@ -52,12 +55,15 @@ class Canvas {
             alpha: true,
             // logarithmicDepthBuffer:true
         });
+
+        // renderer.outputEncoding = THREE.sRGBEncoding; 
+        // renderer.outputColorSpace = 
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.setPixelRatio(window.devicePixelRatio);
         document.body.appendChild(renderer.domElement);
         this.renderer = renderer
          // 可选：设置清空颜色（背景）
-        this.renderer.setClearColor(0x000000);
+        this.renderer.setClearColor(0xffffff);
 
         this.controls = new TrackballControls(this.camera, this.renderer.domElement);
         this.controls.rotateSpeed = 5.0;
@@ -100,27 +106,34 @@ class Canvas {
 
     initComposer(){
         const composer = new EffectComposer(this.renderer);
-        composer.addPass(new RenderPass(this.scene,this.camera))
+        // composer.addPass(new RenderPass(this.scene,this.camera))
         const resolution = new Vector2(window.innerWidth * window.devicePixelRatio, window.innerHeight * window.devicePixelRatio)
-        const outlinePass = new OutlinePass(resolution,this.scene,this.camera)
-        outlinePass.visibleEdgeColor = new Color(0x0617fe)
-        outlinePass.hiddenEdgeColor = new Color(0xe60f0f)
-        outlinePass.edgeStrength = 10
-        outlinePass.edgeGlow = 0
-        outlinePass.edgeThickness = 1
-        outlinePass.pulsePeriod = 0
-        console.log(this.faces);
+        const ccPass = new CCPass({
+            scene: this.scene,
+            camera: this.camera,
+            resolution,
+            mode:renderState.renderMode
+        });
+        // const outlinePass = new OutlinePass(resolution,this.scene,this.camera)
+        // outlinePass.visibleEdgeColor = new Color(0x0617fe)
+        // outlinePass.hiddenEdgeColor = new Color(0xe60f0f)
+        // outlinePass.edgeStrength = 10
+        // outlinePass.edgeGlow = 0
+        // outlinePass.edgeThickness = 1
+        // outlinePass.pulsePeriod = 0
+        // console.log(this.faces);
         
-        outlinePass.selectedObjects = this.faces
-        composer.addPass(outlinePass)
-        composer.addPass(new OutputPass());
+        // outlinePass.selectedObjects = this.faces
+        // composer.addPass(outlinePass)
+        composer.addPass(ccPass)
+        // composer.addPass(new OutputPass());
         this.composer = composer
     }
 
     private animate = ()=> {
-          requestAnimationFrame(this.animate);
-          this.controls.update()
-        //   this.renderer.render(this.scene, this.camera);
+        requestAnimationFrame(this.animate);
+        this.controls.update()
+        // this.renderer.render(this.scene, this.camera);
          this.composer.render()
     }
 
