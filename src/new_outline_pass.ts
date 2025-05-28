@@ -122,14 +122,29 @@ export class CCPass extends Pass {
    private _sceneClassify(){
         const {topoMeshList, topoEdgeList, otherTopoList, otherHelperList} = this._sceneClassification;
         const sceneChild = this._scene.children;
+        topoMeshList.length = 0;
+        topoEdgeList.length = 0;
+        otherTopoList.length = 0;
+        otherHelperList.length = 0;
+        
+        console.log(sceneChild);
+        
         for(const obj of sceneChild){
             if(obj instanceof Mesh && !(obj instanceof LineSegments2)) {
+                const mat = obj.material as Material;
+                mat.transparent = this._transparent;
+                mat.opacity = this._transparent ? 0.5 : 1;
+                // mat.depthWrite = false;  // 禁止透明物体写入深度缓冲区
+                // mat.depthTest = true;    // 启用深度测试以确保正确的渲染顺序
                 topoMeshList.push(obj)
             }
             if(obj instanceof LineSegments2){
                 topoEdgeList.push(obj)
             }
             if(obj instanceof AxesHelper){
+                otherTopoList.push(obj)
+            }
+            if(obj instanceof Light) {
                 otherHelperList.push(obj)
             }
         }
@@ -153,8 +168,6 @@ export class CCPass extends Pass {
     * 渲染面
     */
     private _renderMesh(renderer: WebGLRenderer) {
-        // const meshMat = this._colored ? null : this._whiteMeshMat;
-        // 需要着色 将Mesh外的其它物体visible设置为false,返回, 否则,将visible直接设置为false
         this._changeBeforeRenderMesh()
         this._renderSceneToRT(renderer,this._outputRT,null);
         this._recoverVisibleCache()
@@ -165,8 +178,19 @@ export class CCPass extends Pass {
     * 渲染线
     */
     private _renderEdge(renderer: WebGLRenderer) {
-
+        this._changeBeforeRenderEdge()
+        this._renderWithRenderer(renderer, null)
+        this._recoverVisibleCache()
     }
+
+    /**
+    * 渲染场景中其它物体
+    */
+   private _renderOther(renderer: WebGLRenderer){
+        this._changeBeforeRenderOther();
+        this._renderWithRenderer(renderer,  null)
+        this._recoverVisibleCache()
+   }
 
     
     /**
@@ -194,6 +218,7 @@ export class CCPass extends Pass {
         this._cacheOldRendererSetting(renderer)
         this._renderMesh(renderer)
         this._renderEdge(renderer)
+        this._renderOther(renderer)
         this._recoverOldRendererSetting(renderer)
         this._renderToScreen(renderer)
     }
@@ -207,6 +232,17 @@ export class CCPass extends Pass {
         renderer.setRenderTarget(RT);
         renderer.clear();
         renderer.render(this._scene, this._camera)
+    }
+
+    /**
+    * 直接使用渲染器渲染,不清空
+    */
+    private _renderWithRenderer(renderer: WebGLRenderer, material:Material | null) {
+        const currentSceneBackground = this._scene.background;
+        this._scene.background = null
+        this._scene.overrideMaterial = material;
+        renderer.render(this._scene, this._camera);
+        this._scene.background = currentSceneBackground
     }
 
     /**
@@ -227,13 +263,13 @@ export class CCPass extends Pass {
     * 渲染Mesh前处理
     */
     private _changeBeforeRenderMesh() {
-        const {topoMeshList, topoEdgeList,otherHelperList} = this._sceneClassification
+        const {topoMeshList, topoEdgeList,otherTopoList} = this._sceneClassification
         if(this._colored) {
             topoEdgeList.forEach(_=>{
                 this._visibleCache.set(_, _.visible)
                 _.visible = false;
             })
-            otherHelperList.forEach(_=>{
+            otherTopoList.forEach(_=>{
                 this._visibleCache.set(_, _.visible)
                 _.visible = false;
             })
@@ -243,9 +279,45 @@ export class CCPass extends Pass {
                 _.visible = false
             })
         }
-        // 将mesh外的物体隐藏 返回
-        // 否则 将mesh的材质替换
     }
+
+    /**
+    * 渲染线前处理
+    */
+    private _changeBeforeRenderEdge() {
+            const {topoMeshList, topoEdgeList,otherTopoList} = this._sceneClassification
+            if(this._edge){
+                topoMeshList.forEach(_=>{
+                    this._visibleCache.set(_,_.visible)
+                    _.visible = false 
+                })
+                otherTopoList.forEach(_=>{
+                    this._visibleCache.set(_,_.visible)
+                    _.visible = false
+                })
+            }else {
+                topoEdgeList.forEach(_=>{
+                    this._visibleCache.set(_,_.visible)
+                    _.visible = false
+                })
+            }
+    }
+
+
+    /**
+    * 渲染场景其它物体前处理
+    */
+   private _changeBeforeRenderOther(){
+        const {topoMeshList, topoEdgeList} = this._sceneClassification
+        topoMeshList.forEach(_=>{
+            this._visibleCache.set(_,_.visible)
+            _.visible = false
+        })
+        topoEdgeList.forEach(_=>{
+            this._visibleCache.set(_,_.visible)
+            _.visible = false
+        })
+   }
 
     /**
     * visible缓存回写并清空
@@ -260,15 +332,14 @@ export class CCPass extends Pass {
     /**
     * 设置是否显示
     */
-    private _setTransparent(transparent:boolean){
-        // TODO 测试后删除
-        this._sceneClassify()
-        this._sceneClassification.topoMeshList.forEach(_=>{
-            const mat =  (_.material as Material)
-            mat.transparent = transparent;
-            mat.opacity = transparent ? 0.5 : 1;
-        })
-    }
+    // private _setTransparent(transparent:boolean){
+    //     this._transparent = transparent
+    //     this._sceneClassification.topoMeshList.forEach(_=>{
+    //         const mat =  (_.material as Material)
+    //         mat.transparent = transparent;
+    //         mat.opacity = transparent ? 0.5 : 1;
+    //     })
+    // }
 
     /**
     * 设置渲染模式
@@ -278,23 +349,23 @@ export class CCPass extends Pass {
             case EN_RENDER_MODE.colorMode:
                 this._colored = true;
                 this._edge = false;
-                this._setTransparent(false)
+                this._transparent = false;
                 break;
             case EN_RENDER_MODE.edgeMode:
                 this._colored = false;
                 this._edge = true;
-                this._setTransparent(false)
+                this._transparent = false;
                 break;
             case EN_RENDER_MODE.edgeColorMode:
                 this._colored = true;
                 this._edge = true;
-                this._setTransparent(false)
+                this._transparent = false;
                 break;
             
             case EN_RENDER_MODE.translucentMode:
                 this._colored = true;
                 this._edge = true;
-                this._setTransparent(true)
+                this._transparent = true;
                 break;
         }
    }

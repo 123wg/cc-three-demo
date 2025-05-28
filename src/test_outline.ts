@@ -2,7 +2,7 @@
 
 import { TrackballControls } from 'three/examples/jsm/controls/TrackballControls.js';
 import './index.css'
-import { AmbientLight, AxesHelper, BoxGeometry, BufferAttribute, BufferGeometry, Color, DirectionalLight, DoubleSide, Float32BufferAttribute, GridHelper, Group, Mesh, MeshBasicMaterial, MeshPhongMaterial, Object3D, OrthographicCamera, PerspectiveCamera, Points, PointsMaterial, Scene, Vector3, WebGLRenderer } from 'three'
+import { AdditiveBlending, AmbientLight, AxesHelper, BoxGeometry, BufferAttribute, BufferGeometry, Color, DirectionalLight, DoubleSide, Float32BufferAttribute, GridHelper, Group, Mesh, MeshBasicMaterial, MeshPhongMaterial, MultiplyBlending, NoBlending, NormalBlending, Object3D, OrthographicCamera, PerspectiveCamera, Points, PointsMaterial, Scene, SubtractiveBlending, Vector3, WebGLRenderer } from 'three'
 import { LineSegmentsGeometry } from 'three/examples/jsm/lines/LineSegmentsGeometry.js';
 import { LineSegments2 } from 'three/examples/jsm/lines/LineSegments2.js';
 import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js';
@@ -95,9 +95,9 @@ class Canvas {
 
         this.onResize();
 
-        this.addObject()
+        this.addObject();
 
-        this.initComposer();
+        // this.initComposer();
 
         this.animate();
     }
@@ -159,7 +159,9 @@ class Canvas {
             emissive: 0x000000,
             emissiveIntensity: 0.0,
             specular: 0x444444,
-            shininess: 50
+            shininess: 50,
+            // transparent:true,
+            // opacity:0.5,
         })
 
         const edgeMaterial = new LineMaterial({
