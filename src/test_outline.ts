@@ -97,7 +97,7 @@ class Canvas {
 
         this.addObject();
 
-        // this.initComposer();
+        this.initComposer();
 
         this.animate();
     }
@@ -152,7 +152,6 @@ class Canvas {
 
     // 加一些测试物体到场景中
     addObject() {
-        
         const meshMat = new MeshPhongMaterial({
             color:new Color(0.6653872982754769,0.6653872982754769,0.6653872982754769),
             side: DoubleSide,
@@ -165,7 +164,7 @@ class Canvas {
         })
 
         const edgeMaterial = new LineMaterial({
-            linewidth: 1,
+            linewidth: 2,
             color: 0x000000,
             side: DoubleSide,
             polygonOffset: true,

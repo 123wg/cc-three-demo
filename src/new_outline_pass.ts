@@ -101,6 +101,7 @@ export class CCPass extends Pass {
             blending: NoBlending,
             depthTest: false,
             depthWrite: false,
+            transparent:true
         })
     }
 
@@ -126,8 +127,6 @@ export class CCPass extends Pass {
         topoEdgeList.length = 0;
         otherTopoList.length = 0;
         otherHelperList.length = 0;
-        
-        console.log(sceneChild);
         
         for(const obj of sceneChild){
             if(obj instanceof Mesh && !(obj instanceof LineSegments2)) {
