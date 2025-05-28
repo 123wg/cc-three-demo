@@ -2,7 +2,7 @@
 * 自定义CCPass
 */
 
-import { AxesHelper, Camera, Color, IUniform, Light, LinearFilter, Material, Mesh, MeshBasicMaterial, NoBlending, Object3D, OrthographicCamera, PerspectiveCamera, RGBAFormat, Scene, ShaderMaterial, SRGBColorSpace, SRGBToLinear, Texture, Uniform, UniformsUtils, Vector2, WebGLRenderer, WebGLRenderTarget } from "three";
+import { AxesHelper, Camera, Color, IUniform, Light, LinearFilter, LinearMipMapLinearFilter, Material, Mesh, MeshBasicMaterial, NoBlending, Object3D, OrthographicCamera, PerspectiveCamera, RGBAFormat, Scene, ShaderMaterial, SRGBColorSpace, SRGBToLinear, Texture, Uniform, UniformsUtils, Vector2, WebGLRenderer, WebGLRenderTarget } from "three";
 import { FullScreenQuad, Pass } from "three/examples/jsm/postprocessing/Pass.js";
 import { EN_RENDER_MODE } from "./renderState";
 import { CopyShader } from "three/examples/jsm/shaders/CopyShader.js";
@@ -133,8 +133,6 @@ export class CCPass extends Pass {
                 const mat = obj.material as Material;
                 mat.transparent = this._transparent;
                 mat.opacity = this._transparent ? 0.5 : 1;
-                // mat.depthWrite = false;  // 禁止透明物体写入深度缓冲区
-                // mat.depthTest = true;    // 启用深度测试以确保正确的渲染顺序
                 topoMeshList.push(obj)
             }
             if(obj instanceof LineSegments2){
@@ -216,8 +214,8 @@ export class CCPass extends Pass {
         this._sceneClassify()
         this._cacheOldRendererSetting(renderer)
         this._renderMesh(renderer)
-        this._renderEdge(renderer)
-        this._renderOther(renderer)
+        // this._renderEdge(renderer)
+        // this._renderOther(renderer)
         this._recoverOldRendererSetting(renderer)
         this._renderToScreen(renderer)
     }
@@ -262,20 +260,17 @@ export class CCPass extends Pass {
     * 渲染Mesh前处理
     */
     private _changeBeforeRenderMesh() {
-        const {topoMeshList, topoEdgeList,otherTopoList} = this._sceneClassification
-        if(this._colored) {
-            topoEdgeList.forEach(_=>{
-                this._visibleCache.set(_, _.visible)
-                _.visible = false;
-            })
-            otherTopoList.forEach(_=>{
-                this._visibleCache.set(_, _.visible)
-                _.visible = false;
-            })
-        }else {
+        const {topoMeshList, topoEdgeList,otherTopoList,otherHelperList} = this._sceneClassification
+        if(!this._colored) {
             topoMeshList.forEach(_=>{
-                this._visibleCache.set(_,_.visible)
-                _.visible = false
+              this._visibleCache.set(_, _.visible);
+              _.visible = false;
+            })
+        }
+        if(!this._edge) {
+            topoEdgeList.forEach(_=>{
+                this._visibleCache.set(_, _.visible);
+              _.visible = false;
             })
         }
     }
@@ -285,16 +280,15 @@ export class CCPass extends Pass {
     */
     private _changeBeforeRenderEdge() {
             const {topoMeshList, topoEdgeList,otherTopoList} = this._sceneClassification
-            if(this._edge){
-                topoMeshList.forEach(_=>{
-                    this._visibleCache.set(_,_.visible)
-                    _.visible = false 
-                })
-                otherTopoList.forEach(_=>{
-                    this._visibleCache.set(_,_.visible)
-                    _.visible = false
-                })
-            }else {
+            topoMeshList.forEach(_=>{
+                this._visibleCache.set(_,_.visible)
+                _.visible = false 
+            })
+            otherTopoList.forEach(_=>{
+                this._visibleCache.set(_,_.visible)
+                _.visible = false
+            })
+            if(!this._edge){
                 topoEdgeList.forEach(_=>{
                     this._visibleCache.set(_,_.visible)
                     _.visible = false

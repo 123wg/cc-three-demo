@@ -29,10 +29,12 @@ export enum EN_RENDER_MODE  {
 
 // TODO dirty机制、性能、调试面板、GPU拾取等都添加进来
 export class RenderState {
+
+    
     /**约束图标深度衰减*/
     private _constraintAttenuation = true;
 
-    private _renderMode: EN_RENDER_MODE = EN_RENDER_MODE.edgeColorMode;
+    private _renderMode: EN_RENDER_MODE = EN_RENDER_MODE.translucentMode;
 
     public get renderMode(): EN_RENDER_MODE {
         return this._renderMode;

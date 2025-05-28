@@ -159,12 +159,10 @@ class Canvas {
             emissiveIntensity: 0.0,
             specular: 0x444444,
             shininess: 50,
-            // transparent:true,
-            // opacity:0.5,
         })
 
         const edgeMaterial = new LineMaterial({
-            linewidth: 2,
+            linewidth: 1,
             color: 0x000000,
             side: DoubleSide,
             polygonOffset: true,
@@ -194,7 +192,7 @@ class Canvas {
             buff.computeBoundingBox();
 
             const edge = new LineSegments2(buff, edgeMaterial);
-            edge.renderOrder = 999
+            // edge.renderOrder = 999
 
             this.edges.push(edge)
             this.scene.add(edge);
