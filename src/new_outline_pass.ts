@@ -2,7 +2,7 @@
 * 自定义CCPass
 */
 
-import { AxesHelper, Camera, Color, IUniform, Light, LinearFilter, LinearMipMapLinearFilter, Material, Mesh, MeshBasicMaterial, NoBlending, Object3D, OrthographicCamera, PerspectiveCamera, RGBAFormat, Scene, ShaderMaterial, SRGBColorSpace, SRGBToLinear, Texture, Uniform, UniformsUtils, Vector2, WebGLRenderer, WebGLRenderTarget } from "three";
+import { AxesHelper, Camera, Color, IUniform, Light, LinearFilter, LinearMipMapLinearFilter, Material, Mesh, MeshBasicMaterial, NoBlending, Object3D, OrthographicCamera, PerspectiveCamera, PlaneGeometry, RGBAFormat, Scene, ShaderMaterial, SRGBColorSpace, SRGBToLinear, Texture, Uniform, UniformsUtils, Vector2, WebGLRenderer, WebGLRenderTarget } from "three";
 import { FullScreenQuad, Pass } from "three/examples/jsm/postprocessing/Pass.js";
 import { EN_RENDER_MODE } from "./renderState";
 import { CopyShader } from "three/examples/jsm/shaders/CopyShader.js";
@@ -129,19 +129,16 @@ export class CCPass extends Pass {
         otherHelperList.length = 0;
         
         for(const obj of sceneChild){
-            if(obj instanceof Mesh && !(obj instanceof LineSegments2)) {
+            if(obj instanceof Mesh && !(obj instanceof LineSegments2) && !(obj.geometry instanceof PlaneGeometry)) {
                 const mat = obj.material as Material;
                 mat.transparent = this._transparent;
                 mat.opacity = this._transparent ? 0.5 : 1;
                 topoMeshList.push(obj)
-            }
-            if(obj instanceof LineSegments2){
+            }else  if(obj instanceof LineSegments2){
                 topoEdgeList.push(obj)
-            }
-            if(obj instanceof AxesHelper){
+            }else  if(obj instanceof AxesHelper){
                 otherTopoList.push(obj)
-            }
-            if(obj instanceof Light) {
+            } else  {
                 otherHelperList.push(obj)
             }
         }
