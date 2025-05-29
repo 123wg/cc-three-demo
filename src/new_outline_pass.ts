@@ -362,4 +362,17 @@ export class CCPass extends Pass {
                 break;
         }
    }
+
+
+   dispose() {
+        this._whiteMeshMat?.dispose()
+        this._copyMaterial.dispose()
+        this._outputRT.dispose();
+		this._fsQuad.dispose();
+	}
+
+	setSize( width: number, height:number ) {
+        this._resolution.set(width * window.devicePixelRatio, height * window.devicePixelRatio)
+        this._outputRT.setSize(this._resolution.x, this._resolution.y)
+	}
 }
