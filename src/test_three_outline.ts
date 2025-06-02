@@ -164,6 +164,8 @@ class Canvas {
             emissiveIntensity: 0.0,
             specular: 0x444444,
             shininess: 50,
+            // transparent:true,
+            // opacity:0.2
         })
 
         const edgeMaterial = new LineMaterial({

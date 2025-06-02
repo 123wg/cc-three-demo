@@ -1,4 +1,4 @@
-import { Camera } from 'three';
+import { Camera, MultiplyBlending, NormalBlending } from 'three';
 import { Object3D } from 'three';
 import { OrthographicCamera } from 'three';
 import { WebGLRenderer } from 'three';
@@ -67,7 +67,11 @@ class OutlinePass extends Pass {
     separableBlurMaterial2: ShaderMaterial;
     overlayMaterial: ShaderMaterial;
     copyUniforms: any;
+    copyUniforms1: any;
+
     materialCopy: ShaderMaterial;
+    materialCopy1: ShaderMaterial;
+
     _oldClearColor: Color;
     oldClearAlpha: number;
     private _fsQuad: FullScreenQuad;
@@ -125,7 +129,7 @@ class OutlinePass extends Pass {
          * @type {Color}
          * @default (0.1,0.04,0.02)
          */
-        this.hiddenEdgeColor = new Color( 0.1, 0.04, 0.02 );
+        this.hiddenEdgeColor = new Color( 0, 0, 0 );
 
         /**
          * Can be used for an animated glow/pulse effect.
@@ -254,14 +258,55 @@ class OutlinePass extends Pass {
         const copyShader = CopyShader;
 
         this.copyUniforms = UniformsUtils.clone( copyShader.uniforms );
+        this.copyUniforms1 = UniformsUtils.clone( copyShader.uniforms );
 
         this.materialCopy = new ShaderMaterial( {
             uniforms: this.copyUniforms,
             vertexShader: copyShader.vertexShader,
-            fragmentShader: copyShader.fragmentShader,
-            blending: NoBlending,
+            fragmentShader: /* glsl */`
+
+		uniform float opacity;
+
+		uniform sampler2D tDiffuse;
+
+		varying vec2 vUv;
+
+		void main() {
+
+			vec4 texel = texture2D( tDiffuse, vUv );
+			gl_FragColor = opacity * texel;
+            gl_FragColor = sRGBTransferOETF( gl_FragColor );
+
+
+		}`,
+            // blending: NoBlending,
             depthTest: false,
-            depthWrite: false
+            depthWrite: false,
+        } );
+
+        
+          this.materialCopy1 = new ShaderMaterial( {
+            uniforms: this.copyUniforms1,
+            vertexShader: copyShader.vertexShader,
+            fragmentShader: /* glsl */`
+
+		uniform float opacity;
+
+		uniform sampler2D tDiffuse;
+
+		varying vec2 vUv;
+
+		void main() {
+			vec4 texel = texture2D( tDiffuse, vUv );
+			gl_FragColor = opacity * texel;
+           
+		}`,
+            // blending写任何东西都不行，为啥啊 默认的NormalBlending就是对的
+            // blending: AdditiveBlending,
+            // blending:NoBlending,
+            depthTest: false,
+            depthWrite: false,
+            transparent:true
         } );
 
         this.enabled = true;
@@ -455,8 +500,12 @@ class OutlinePass extends Pass {
 
 
             // 直接将线渲到readBuffer中，看看效果
-            // this._renderToScene(renderer, this.renderTargetEdgeBuffer1,oldAutoClear)
-            // return
+            this._fsQuad.material = this.materialCopy1;
+             this.copyUniforms1[ 'tDiffuse' ].value = this.renderTargetEdgeBuffer1.texture;
+            renderer.setRenderTarget(readBuffer );
+            this._fsQuad.render( renderer );
+            this._renderToScene(renderer, readBuffer,oldAutoClear)
+            return
 
             
 
@@ -506,7 +555,7 @@ class OutlinePass extends Pass {
 
 
             if ( maskActive ) renderer.state.buffers.stencil.setTest( true );
-
+            
             renderer.setRenderTarget( readBuffer );
             this._fsQuad.render( renderer );
 
