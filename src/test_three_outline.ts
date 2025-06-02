@@ -1,7 +1,7 @@
-
 /**
-* 公司用的后处理demo
+* 测试、调试threejs中outlinePass的实现原理和过程
 */
+
 
 import { TrackballControls } from 'three/examples/jsm/controls/TrackballControls.js';
 import './index.css'
@@ -16,6 +16,7 @@ import {OutlinePass} from './outlinepass'
 import { Vector2 } from 'three';
 import { CCPass } from './new_outline_pass';
 import { renderState } from './renderState';
+import { OutputPass } from 'three/examples/jsm/Addons.js';
 
 class Canvas {
   public scene:Scene
@@ -106,13 +107,16 @@ class Canvas {
     initComposer(){
         const composer = new EffectComposer(this.renderer);
         const resolution = new Vector2(window.innerWidth * window.devicePixelRatio, window.innerHeight * window.devicePixelRatio)
-        const ccPass = new CCPass({
-            scene: this.scene,
-            camera: this.camera,
-            resolution,
-            mode:renderState.renderMode
-        });
-        composer.addPass(ccPass)
+        // const ccPass = new CCPass({
+        //     scene: this.scene,
+        //     camera: this.camera,
+        //     resolution,
+        //     mode:renderState.renderMode
+        // });
+        // composer.addPass(ccPass)
+        composer.addPass(new RenderPass(this.scene,this.camera))
+        composer.addPass(new OutlinePass(resolution,this.scene,this.camera,this.faces))
+        // composer.addPass(new OutputPass())
         this.composer = composer
     }
 
@@ -209,7 +213,7 @@ class Canvas {
             // depthWrite:false,
             depthTest:false
         }))
-        this.scene.add(planeMesh)
+        // this.scene.add(planeMesh)
 
     }
 }

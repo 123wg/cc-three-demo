@@ -117,7 +117,7 @@ class OutlinePass extends Pass {
          * @type {Color}
          * @default (1,1,1)
          */
-        this.visibleEdgeColor = new Color( 1, 1, 1 );
+        this.visibleEdgeColor = new Color( 0, 0, 0 );
 
         /**
          * The hidden edge color.
@@ -395,7 +395,7 @@ class OutlinePass extends Pass {
             this._updateTextureMatrix();
 
             // Make non selected objects invisible, and draw only the selected objects, by comparing the depth buffer of non selected objects
-            // 将未选中物体隐藏，绘制选中物体，和未选中物体比较深度?? 为了绘制遮罩层, 被遮挡g通道为0,不被遮挡,g通道为1
+            // 将未选中物体隐藏，绘制选中物体，和未选中物体比较深度?? 为了绘制遮罩层, 被遮挡g通道为1.0
             this._changeVisibilityOfNonSelectedObjects( false );
             this.renderScene.overrideMaterial = this.prepareMaskMaterial;
             this.prepareMaskMaterial.uniforms[ 'cameraNearFar' ].value.set( this.renderCamera.near, this.renderCamera.far );
@@ -422,6 +422,12 @@ class OutlinePass extends Pass {
             renderer.clear();
             this._fsQuad.render( renderer );
 
+
+
+            // this._renderToScene(renderer,this.renderTargetMaskBuffer,oldAutoClear)
+            // return
+
+
             // 轮廓线实现脉冲发光效果,真实实现中这部分是不需要的
             this.tempPulseColor1.copy( this.visibleEdgeColor );
             this.tempPulseColor2.copy( this.hiddenEdgeColor );
@@ -446,6 +452,15 @@ class OutlinePass extends Pass {
             renderer.setRenderTarget( this.renderTargetEdgeBuffer1 );
             renderer.clear();
             this._fsQuad.render( renderer );
+
+
+            // 直接将线渲到readBuffer中，看看效果
+            // this._renderToScene(renderer, this.renderTargetEdgeBuffer1,oldAutoClear)
+            // return
+
+            
+
+
 
             // 4. Apply Blur on Half res
             this._fsQuad.material = this.separableBlurMaterial1;
@@ -473,6 +488,11 @@ class OutlinePass extends Pass {
             renderer.setRenderTarget( this.renderTargetEdgeBuffer2 );
             renderer.clear();
             this._fsQuad.render( renderer );
+
+            // this._renderToScene(renderer,this.renderTargetEdgeBuffer1,oldAutoClear)
+            // return
+
+            
 
             // Blend it additively over the input texture
             this._fsQuad.material = this.overlayMaterial;
@@ -504,6 +524,19 @@ class OutlinePass extends Pass {
 
         }
 
+    }
+
+
+
+    private _renderToScene(renderer:WebGLRenderer,rt:WebGLRenderTarget,oldAutoClear:boolean){
+            renderer.setClearColor( this._oldClearColor, this.oldClearAlpha );
+            renderer.autoClear = oldAutoClear;
+
+            this._fsQuad.material = this.materialCopy;
+            this.copyUniforms[ 'tDiffuse' ].value = rt.texture;
+            renderer.setRenderTarget( null );
+            renderer.clear();
+            this._fsQuad.render( renderer );
     }
 
     // internals
@@ -665,6 +698,7 @@ class OutlinePass extends Pass {
 
                     float depth = unpackRGBAToDepth(texture2DProj( depthTexture, projTexCoord ));
                     float viewZ = - DEPTH_TO_VIEW_Z( depth, cameraNearFar.x, cameraNearFar.y );
+                    // 被遮挡是1.0
                     float depthTest = (-vPosition.z > viewZ) ? 1.0 : 0.0;
                     gl_FragColor = vec4(0.0, depthTest, 1.0, 1.0);
 
