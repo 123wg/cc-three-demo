@@ -1,3 +1,7 @@
+/**
+* threejs的outlinePass源码截图
+*/
+
 import { Camera, MultiplyBlending, NormalBlending } from 'three';
 import { Object3D } from 'three';
 import { OrthographicCamera } from 'three';
@@ -500,12 +504,13 @@ class OutlinePass extends Pass {
 
 
             // 直接将线渲到readBuffer中，看看效果
-            this._fsQuad.material = this.materialCopy1;
-             this.copyUniforms1[ 'tDiffuse' ].value = this.renderTargetEdgeBuffer1.texture;
-            renderer.setRenderTarget(readBuffer );
-            this._fsQuad.render( renderer );
-            this._renderToScene(renderer, readBuffer,oldAutoClear)
-            return
+            // this._fsQuad.material = this.materialCopy1;
+            // this.copyUniforms1[ 'tDiffuse' ].value = this.renderTargetEdgeBuffer1.texture;
+            // renderer.setRenderTarget(readBuffer );
+            // this._fsQuad.render( renderer );
+            //  this._renderToScene(renderer, readBuffer,oldAutoClear)
+            // // this._renderToScene(renderer, this.renderTargetEdgeBuffer1,oldAutoClear)
+            // return
 
             
 

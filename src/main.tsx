@@ -1,3 +1,2 @@
-// import './test_outline'
-
-import './test_three_outline'
+import './index.css'
+import './test_outline/test_three_outline'

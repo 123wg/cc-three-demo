@@ -1,3 +1,6 @@
+/**
+* threejs的轨迹球控制器
+*/
 import {
     Controls,
     MathUtils,

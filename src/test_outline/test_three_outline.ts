@@ -4,7 +4,6 @@
 
 
 import { TrackballControls } from 'three/examples/jsm/controls/TrackballControls.js';
-import './index.css'
 import { AdditiveBlending, AmbientLight, AxesHelper, BoxGeometry, BufferAttribute, BufferGeometry, Color, DirectionalLight, DoubleSide, Float32BufferAttribute, GridHelper, Group, Mesh, MeshBasicMaterial, MeshPhongMaterial, MultiplyBlending, NoBlending, NormalBlending, Object3D, OrthographicCamera, PerspectiveCamera, PlaneGeometry, Points, PointsMaterial, Scene, SubtractiveBlending, Vector3, WebGLRenderer } from 'three'
 import { LineSegmentsGeometry } from 'three/examples/jsm/lines/LineSegmentsGeometry.js';
 import { LineSegments2 } from 'three/examples/jsm/lines/LineSegments2.js';
